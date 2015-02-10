@@ -49,7 +49,7 @@ cb_crit_bit(cb_leaf *o1, cb_leaf *o2, cb_branch *n);
 void 
 cb_init();
 
-// insert a leaf node into the tree
+// inserts a leaf node into the tree
 cb_leaf* 
 cb_insert(cb_leaf *obj, uint32_t *retries);
 

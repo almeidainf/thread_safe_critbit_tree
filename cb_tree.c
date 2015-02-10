@@ -1,18 +1,3 @@
-/* Hyper CritBit
- *
- * Árvore thread-safe para armazenamento de objetos no Hyper.
- * Suporta multiplas threads buscando e inserindo objetos em paralelo com uma thread excluindo objetos.
- *
- * A CritBit Tree armazena os objetos nas folhas, mantendo informacoes de roteamento no nodos internos.
- * A operacao de insercao interage com o nodo auxiliar pai do objeto.
- * A operacao de remocao interage com o nodo auxiliar avo do objeto.
- *
- * Nessa implementacao utilizamos CAS (Compare and Swap) para garantir a trocar atomica de anlguns ponteiros.
- * Alem disso, utilizamos locks (mutex) individuais para cada nodo auxiliar.
- * As operacoes de insercao e remocao bloqueiam apenas os nodos pai e avo de um objeto, permitindo o paralelismo entre insercoes em pontos diferentes da arvore. As leituras (buscas na arvore) nunca sao bloqueadas.
- */
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -21,21 +6,21 @@
 
 #include "cb_tree.h"
 
-// Defining VERBOSE_TEST
+// defines VERBOSE_TEST
 #ifdef VERBOSE_ON
 	#define VERBOSE_TEST 1
 #else
 	#define VERBOSE_TEST 0
 #endif
 
-// Defining DEBUG_TEST
+// defines DEBUG_TEST
 #ifdef DEBUG_ON
 	#define DEBUG_TEST 1
 #else
 	#define DEBUG_TEST 0
 #endif
 
-// Defining verbose macro
+// defines verbose macro
 #define verbose(msg, ...)\
 do{\
 	if(VERBOSE_TEST || DEBUG_TEST){\
@@ -44,7 +29,7 @@ do{\
 	}\
 } while(0)
 
-// Defining debug macro
+// defines debug macro
 #define debug(msg, ...)\
 do{\
 	if(DEBUG_TEST){\
@@ -53,6 +38,7 @@ do{\
 	}\
 } while(0)
 
+// defines whether using spinlock or mutex
 #define SPINLOCK
 #ifdef SPINLOCK
 	#define LOCK(lock) pthread_spin_lock(lock)
@@ -64,16 +50,19 @@ do{\
 	#define LOCK_INIT(lock) pthread_mutex_init(lock, NULL)
 #endif
 
+// increments the counter and continues (retries)
 #define retrying()\
 		if(retries)(*retries)++;\
 		continue
 
+// retrieves the precoputed crit bit mask from the mask table
 #define cb_bit(byte1, byte2)\
 	mask_table[(byte1) ^ (byte2)]
 
-extern cb_tree* critbit;
-uint8_t mask_table[256];
+extern cb_tree* critbit;	// the tree
+uint8_t mask_table[256];	// the mask table
 
+// precomputes bitmasks for every possible combination of byte1 and byte2, so we don't need to calculate it later
 void cb_mask_table_init(){
 	uint8_t byte1, byte2, bit, mask;
 	byte1 = 0;
